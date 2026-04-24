@@ -12,7 +12,8 @@ const { protect } = require('./middlewares/authMiddleware');
 
 const app = express();
 app.set('trust proxy', 1);
-// --- Security Headers ---
+
+// --- Security ---
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
@@ -27,30 +28,18 @@ app.use(cors({
   credentials: true
 }));
 
-// --- Body Parsers ---
+// --- Body ---
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// --- Static Files ---
+// --- Static ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// --- Rate Limiting ---
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000
-});
-app.use('/api', globalLimiter);
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
-
-const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 30
-});
+// --- Rate Limit ---
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30 });
 
 // --- Routes ---
 app.use('/api/auth', authLimiter, require('./routes/authRoutes'));
@@ -64,22 +53,20 @@ app.use('/api/forms', require('./routes/formRoutes'));
 app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
-// Profile routes
+// --- Profile ---
 const { getUserProfile, updateProfile } = require('./controllers/userController');
 app.get('/api/profile', protect, getUserProfile);
 app.put('/api/profile', protect, updateProfile);
 
-// --- Root Route ---
+// --- Root ---
 app.get('/', (req, res) => {
   res.send('CampusRank API is running 🚀');
 });
 
-// --- Error Handler ---
+// --- Error ---
 app.use(errorHandler);
 
-// --- Server Start ---
-const PORT = process.env.PORT || 5000;
-
+// --- DB TEST (IMPORTANT)
 (async () => {
   try {
     const [rows] = await db.execute("SELECT 1");
@@ -89,10 +76,11 @@ const PORT = process.env.PORT || 5000;
   }
 })();
 
-
+// --- Server ---
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`[CampusRank] Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`🚀 Server running on port ${PORT}`);
 
   const { autoCloseExpired } = require('./controllers/formController');
 
