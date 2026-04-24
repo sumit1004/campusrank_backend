@@ -103,3 +103,6 @@ app.listen(PORT, () => {
   // Run once at startup
   runJob();
 });
+app.get('/', (req, res) => {
+  res.send('CampusRank API is running 🚀');
+});
