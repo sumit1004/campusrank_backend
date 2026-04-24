@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Alignment</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Great+Vibes&display=swap');
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 1123px;
+            height: 794px;
+            overflow: hidden;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #ffffff;
+        }
+
+        .certificate {
+            position: relative;
+            width: 1123px;
+            height: 794px;
+        }
+
+        .bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.5; /* Overlay for alignment */
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .bg-base {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        /* All Text Fields Base Class */
+        .txt {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            line-height: 1;
+            font-weight: 700;
+            color: #111;
+            z-index: 5;
+            white-space: nowrap;
+        }
+
+        /* Specific Positions (Need Adjusting) */
+        #name { top: 350px; left: 561px; font-size: 32px; color: #111; }
+        
+        #course { top: 400px; left: 300px; font-size: 18px; }
+        #semester { top: 400px; left: 561px; font-size: 18px; }
+        #branch { top: 400px; left: 800px; font-size: 18px; }
+        
+        #college { top: 450px; left: 400px; font-size: 18px; }
+        #position { top: 450px; left: 750px; font-size: 18px; color: #2563eb; }
+        
+        #event_name { top: 500px; left: 400px; font-size: 18px; }
+        #event_date { top: 500px; left: 700px; font-size: 18px; }
+
+        /* Draggable elements logically to find coordinates! */
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <img src="winner_bg.png" class="bg-base" />
+        <img src="winner_bg.png" class="bg" />
+
+        <div class="txt" id="name">John Doe</div>
+        <div class="txt" id="course">B.Tech</div>
+        <div class="txt" id="semester">6th</div>
+        <div class="txt" id="branch">Computer Science</div>
+        <div class="txt" id="college">Rungta College of Engineering</div>
+        <div class="txt" id="position">Winner</div>
+        <div class="txt" id="event_name">Hackathon 2026</div>
+        <div class="txt" id="event_date">2026-04-20</div>
+    </div>
+
+    <script>
+        // Make elements draggable to quickly find the perfect top and left
+        const elements = document.querySelectorAll('.txt');
+        let activeEl = null;
+        let offsetX, offsetY;
+
+        elements.forEach(el => {
+            el.addEventListener('mousedown', (e) => {
+                activeEl = el;
+                // Get absolute translation offset based on translate(-50%, -50%)
+                const rect = el.getBoundingClientRect();
+                // the mouse offset relative to center of element
+                offsetX = e.clientX - (rect.left + rect.width / 2);
+                offsetY = e.clientY - (rect.top + rect.height / 2);
+                e.preventDefault();
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (activeEl) {
+                const newLeft = e.clientX - offsetX;
+                const newTop = e.clientY - offsetY;
+                activeEl.style.left = newLeft + 'px';
+                activeEl.style.top = newTop + 'px';
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (activeEl) {
+                console.log(activeEl.id + " -> top: " + activeEl.style.top + ", left: " + activeEl.style.left);
+                activeEl = null;
+
+                // Dump all coords
+                let out = {};
+                document.querySelectorAll('.txt').forEach(el => {
+                    out[el.id] = {
+                        top: el.style.top,
+                        left: el.style.left
+                    };
+                });
+                console.log(JSON.stringify(out));
+                document.title = JSON.stringify(out); // for puppeteer to read
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate Alignment Tool v3</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+        
+        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        /* THE CERTIFICATE CONTAINER */
+        .preview-container {
+            position: relative;
+            width: 1123px;
+            height: 794px;
+            background: #fff;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        
+        .bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            user-select: none;
+        }
+
+        .txt {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            line-height: 1;
+            white-space: nowrap;
+            color: #111;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: move;
+            border: 1px dashed transparent;
+            padding: 2px;
+        }
+        .txt:hover { border-color: rgba(255,0,0,0.5); }
+        .txt:active { background: rgba(255,0,0,0.1); }
+
+        /* === CLASS BASED POSITIONS (MATCHING PDF GENERATOR) === */
+        .name      { top: 402px; left: 525px; font-size: 24px; font-weight: 700; }
+        .course    { top: 442px; left: 425px; font-size: 14px; }
+        .semester  { top: 442px; left: 635px; font-size: 14px; }
+        .branch    { top: 442px; left: 815px; font-size: 14px; }
+        .college   { top: 482px; left: 415px; font-size: 14px; }
+        .position  { top: 482px; left: 710px; font-size: 15px; font-weight: 700; color: #1a3fc4; }
+        .event     { top: 522px; left: 405px; font-size: 13px; }
+        .date      { top: 522px; left: 645px; font-size: 13px; }
+
+        /* Control Panel */
+        .controls {
+            margin-bottom: 20px;
+            background: #222;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+        .instr { color: #888; margin-bottom: 10px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>Manual Alignment Tool v3</h1>
+    <p class="instr">Drag text fields. Copy the CSS output from console (F12) to pdfGenerator.js.</p>
+    
+    <div class="controls">
+        <label>Type: 
+            <select id="typeSelect">
+                <option value="winner">Winner</option>
+                <option value="participant">Participant</option>
+            </select>
+        </label>
+        <button onclick="copyCSS()">Copy Updated CSS</button>
+    </div>
+
+    <div class="preview-container" id="container">
+        <img src="http://localhost:5000/assets/winner_bg.png" class="bg" id="bgImg">
+        
+        <div class="txt name" draggable="true">Rohan Sharma</div>
+        <div class="txt course" draggable="true">B.Tech</div>
+        <div class="txt semester" draggable="true">6th Sem</div>
+        <div class="txt branch" draggable="true">CSE</div>
+        <div class="txt college" draggable="true">Rungta College of Engineering</div>
+        <div class="txt position" id="posField" draggable="true">Winner</div>
+        <div class="txt event" draggable="true">CodeSprint 2026</div>
+        <div class="txt date" draggable="true">20 Apr 2026</div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const fields = document.querySelectorAll('.txt');
+        let activeField = null;
+
+        fields.forEach(field => {
+            field.onmousedown = (e) => {
+                activeField = field;
+                field.style.zIndex = 1000;
+            };
+        });
+
+        window.onmousemove = (e) => {
+            if (!activeField) return;
+            const rect = container.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+            
+            // Precision Pixel Position
+            const pxLeft = Math.round(x) + 'px';
+            const pxTop = Math.round(y) + 'px';
+            
+            activeField.style.left = pxLeft;
+            activeField.style.top = pxTop;
+            
+            console.log(`.${activeField.classList[1]} { top: ${pxTop}; left: ${pxLeft}; }`);
+        };
+
+        window.onmouseup = () => { if(activeField) activeField.style.zIndex = 1; activeField = null; };
+
+        document.getElementById('typeSelect').onchange = (e) => {
+            const isPart = e.target.value === 'participant';
+            document.getElementById('posField').style.display = isPart ? 'none' : 'block';
+            document.getElementById('bgImg').src = isPart ? 'http://localhost:5000/assets/participant_bg.png' : 'http://localhost:5000/assets/winner_bg.png';
+        };
+
+        function copyCSS() {
+            let css = "/* New Aligned Positions */\n";
+            fields.forEach(f => {
+                css += `.${f.classList[1].padEnd(10)} { top: ${(f.style.top || getComputedStyle(f).top).padEnd(6)}; left: ${(f.style.left || getComputedStyle(f).left).padEnd(6)}; }\n`;
+            });
+            console.info("UPDATED CSS:\n", css);
+            alert("CSS logged to console! (F12)");
+        }
+    </script>
+</body>
+</html>

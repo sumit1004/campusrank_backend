@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🎯 Certificate Alignment Tool</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a2e;
+      font-family: monospace;
+      color: #eee;
+    }
+    h2 { margin: 0 0 10px; color: #ffd700; font-size: 14px; }
+    #controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button {
+      padding: 6px 12px;
+      background: #ffd700;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    button:hover { background: #ffed4e; }
+    #overlay-toggle { background: #00bcd4; color: #fff; }
+    #output {
+      background: #0d1b2a;
+      border: 1px solid #444;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: pre-wrap;
+      max-height: 160px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      color: #98ff98;
+    }
+
+    /* The certificate canvas — exact A4 landscape size */
+    .cert-wrap {
+      position: relative;
+      width: 1123px;
+      height: 794px;
+      border: 2px solid #ffd700;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    .bg-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1123px;
+      height: 794px;
+      object-fit: cover;
+      user-select: none;
+    }
+    .overlay-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1123px;
+      height: 794px;
+      object-fit: cover;
+      opacity: 0.45;
+      z-index: 10;
+      pointer-events: none;
+      display: none; /* toggled */
+      user-select: none;
+    }
+
+    /* Draggable text labels */
+    .label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-family: 'Segoe UI', sans-serif;
+      font-weight: 700;
+      color: #111;
+      cursor: grab;
+      user-select: none;
+      z-index: 20;
+      background: rgba(255,255,0,0.15);
+      border: 1px dashed rgba(0,0,0,0.4);
+      padding: 2px 4px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .label:hover { background: rgba(255,200,0,0.35); }
+    .label.active { cursor: grabbing; }
+
+    /* Crosshair indicator */
+    .crosshair {
+      position: absolute;
+      pointer-events: none;
+      z-index: 30;
+    }
+    .ch-h { position: absolute; width: 100%; height: 1px; background: rgba(255,0,0,0.5); top: 0; left: 0; }
+    .ch-v { position: absolute; width: 1px; height: 100%; background: rgba(255,0,0,0.5); top: 0; left: 0; }
+  </style>
+</head>
+<body>
+  <h2>🎯 Certificate Alignment Tool — Drag text fields to align; click "Copy Coords" when done</h2>
+  <div id="controls">
+    <button id="overlay-toggle" onclick="toggleOverlay()">Toggle Overlay (ON)</button>
+    <button onclick="copyCoords()">📋 Copy Coordinates</button>
+    <button onclick="resetAll()">↩ Reset</button>
+    <span style="font-size:11px; color:#aaa;">Mouse: <span id="mousePos">0, 0</span></span>
+  </div>
+  <div id="output">// Coordinates will appear here as you drag fields...</div>
+
+  <div class="cert-wrap" id="certWrap">
+    <!-- Background (solid) -->
+    <img class="bg-img" id="bgImg" src="winner_bg.png" />
+    <!-- Semi-transparent overlay for alignment -->
+    <img class="overlay-img" id="overlayImg" src="winner_bg.png" />
+
+    <!-- Draggable text fields (positions are INITIAL GUESSES — drag to correct) -->
+    <div class="label" id="f_name"    style="top:358px;left:582px;font-size:23px;">Rohan Sharma</div>
+    <div class="label" id="f_course"  style="top:401px;left:427px;font-size:15px;">B.Tech</div>
+    <div class="label" id="f_sem"     style="top:401px;left:638px;font-size:15px;">6th Sem</div>
+    <div class="label" id="f_branch"  style="top:401px;left:820px;font-size:15px;">CSE</div>
+    <div class="label" id="f_college" style="top:435px;left:405px;font-size:15px;">Rungta College of Engg.</div>
+    <div class="label" id="f_pos"     style="top:435px;left:670px;font-size:15px;color:#1a3fc4;">Winner</div>
+    <div class="label" id="f_event"   style="top:470px;left:368px;font-size:15px;">CodeSprint 2026</div>
+    <div class="label" id="f_date"    style="top:470px;left:640px;font-size:15px;">20 Apr 2026</div>
+    <div class="label" id="f_under"   style="top:470px;left:852px;font-size:15px;">RSDC</div>
+  </div>
+
+  <script>
+    let overlayOn = false;
+    function toggleOverlay() {
+      overlayOn = !overlayOn;
+      document.getElementById('overlayImg').style.display = overlayOn ? 'block' : 'none';
+      document.getElementById('overlay-toggle').textContent = `Toggle Overlay (${overlayOn ? 'ON' : 'OFF'})`;
+    }
+
+    // Mouse position tracker
+    const certWrap = document.getElementById('certWrap');
+    certWrap.addEventListener('mousemove', (e) => {
+      const r = certWrap.getBoundingClientRect();
+      const x = Math.round(e.clientX - r.left);
+      const y = Math.round(e.clientY - r.top);
+      document.getElementById('mousePos').textContent = `${x}, ${y}`;
+    });
+
+    // Drag logic
+    let dragging = null;
+    let dragOffX = 0, dragOffY = 0;
+
+    document.querySelectorAll('.label').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        dragging = el;
+        el.classList.add('active');
+        // Center is at transform(-50%,-50%), so compute offset from center
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width  / 2;
+        const cy = r.top  + r.height / 2;
+        dragOffX = e.clientX - cx;
+        dragOffY = e.clientY - cy;
+        e.preventDefault();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const r = certWrap.getBoundingClientRect();
+      const newLeft = e.clientX - dragOffX - r.left;
+      const newTop  = e.clientY - dragOffY - r.top;
+      dragging.style.left = newLeft + 'px';
+      dragging.style.top  = newTop  + 'px';
+      updateOutput();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging.classList.remove('active');
+        dragging = null;
+        updateOutput();
+      }
+    });
+
+    function getCoords() {
+      const fields = {};
+      document.querySelectorAll('.label').forEach(el => {
+        const id   = el.id.replace('f_', '');
+        const top  = Math.round(parseFloat(el.style.top));
+        const left = Math.round(parseFloat(el.style.left));
+        fields[id] = { top, left };
+      });
+      return fields;
+    }
+
+    function updateOutput() {
+      const c = getCoords();
+      let out = '// === CALIBRATED POSITIONS ===\n';
+      for (const [k, v] of Object.entries(c)) {
+        out += `// ${k.padEnd(8)} → top: ${String(v.top).padStart(4)}px,  left: ${String(v.left).padStart(4)}px\n`;
+      }
+      document.getElementById('output').textContent = out;
+    }
+
+    function copyCoords() {
+      const c = getCoords();
+      let out = '// === CALIBRATED POSITIONS ===\n';
+      for (const [k, v] of Object.entries(c)) {
+        out += `// ${k.padEnd(8)} → top: ${v.top}px, left: ${v.left}px\n`;
+      }
+      navigator.clipboard.writeText(out).then(() => {
+        alert('Coordinates copied to clipboard!');
+      });
+    }
+
+    function resetAll() {
+      const defaults = {
+        f_name:    [358, 582],
+        f_course:  [401, 427],
+        f_sem:     [401, 638],
+        f_branch:  [401, 820],
+        f_college: [435, 405],
+        f_pos:     [435, 670],
+        f_event:   [470, 368],
+        f_date:    [470, 640],
+        f_under:   [470, 852],
+      };
+      for (const [id, [top, left]] of Object.entries(defaults)) {
+        const el = document.getElementById(id);
+        el.style.top  = top  + 'px';
+        el.style.left = left + 'px';
+      }
+      updateOutput();
+    }
+
+    // Init
+    updateOutput();
+  </script>
+</body>
+</html>

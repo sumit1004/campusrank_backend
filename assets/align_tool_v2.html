@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate Alignment Tool v2</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+        
+        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        /* THE CERTIFICATE CONTAINER - MATCHING PDF GENERATOR */
+        .preview-container {
+            position: relative;
+            width: 1123px;
+            height: 794px;
+            background: #fff;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        
+        .bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            user-select: none;
+        }
+
+        .txt {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            line-height: 1;
+            white-space: nowrap;
+            color: #111;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: move;
+            border: 1px dashed transparent;
+            padding: 2px;
+        }
+        .txt:hover { border-color: rgba(255,0,0,0.5); }
+        .txt:active { background: rgba(255,0,0,0.1); }
+
+        /* Match Classes from pdfGenerator.js */
+        .field-name     { top: 40%; left: 50%; font-size: 26px; font-weight: 700; }
+        .field-course   { top: 45%; left: 35%; font-size: 16px; }
+        .field-sem      { top: 45%; left: 55%; font-size: 16px; }
+        .field-branch   { top: 45%; left: 75%; font-size: 16px; }
+        .field-college  { top: 50%; left: 50%; font-size: 16px; }
+        .field-position { top: 55%; left: 60%; font-size: 16px; font-weight: 700; color: #1e40af; }
+        .field-event    { top: 60%; left: 45%; font-size: 16px; }
+        .field-date     { top: 60%; left: 65%; font-size: 16px; }
+
+        /* Control Panel */
+        .controls {
+            margin-bottom: 20px;
+            background: #222;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+        .instr { color: #888; margin-bottom: 10px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>Manual Alignment Calibration</h1>
+    <p class="instr">Drag text fields to align them. Coordinates will show in the console (F12).</p>
+    
+    <div class="controls">
+        <label>Type: 
+            <select id="typeSelect">
+                <option value="winner">Winner</option>
+                <option value="participant">Participant</option>
+            </select>
+        </label>
+        <button onclick="copyCSS()">Copy Updated CSS</button>
+    </div>
+
+    <div class="preview-container" id="container">
+        <img src="http://localhost:5000/assets/winner_bg.png" class="bg" id="bgImg">
+        
+        <div class="txt field-name" draggable="true">Rohan Sharma</div>
+        <div class="txt field-course" draggable="true">B.Tech</div>
+        <div class="txt field-sem" draggable="true">6th Sem</div>
+        <div class="txt field-branch" draggable="true">CSE</div>
+        <div class="txt field-college" draggable="true">Rungta College of Engineering</div>
+        <div class="txt field-position" id="posField" draggable="true">Winner</div>
+        <div class="txt field-event" draggable="true">CodeSprint 2026</div>
+        <div class="txt field-date" draggable="true">20 Apr 2026</div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const fields = document.querySelectorAll('.txt');
+        let activeField = null;
+
+        fields.forEach(field => {
+            field.onmousedown = (e) => {
+                activeField = field;
+                field.style.zIndex = 1000;
+            };
+        });
+
+        window.onmousemove = (e) => {
+            if (!activeField) return;
+            const rect = container.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+            
+            // Convert to percentages for easy scaling
+            const xPct = ((x / rect.width) * 100).toFixed(1);
+            const yPct = ((y / rect.height) * 100).toFixed(1);
+            
+            activeField.style.left = xPct + '%';
+            activeField.style.top = yPct + '%';
+            
+            console.log(`${activeField.classList[1]}: top: ${yPct}%; left: ${xPct}%;`);
+        };
+
+        window.onmouseup = () => { if(activeField) activeField.style.zIndex = 1; activeField = null; };
+
+        document.getElementById('typeSelect').onchange = (e) => {
+            const isPart = e.target.value === 'participant';
+            document.getElementById('posField').style.display = isPart ? 'none' : 'block';
+            document.getElementById('bgImg').src = isPart ? 'http://localhost:5000/assets/participant_bg.png' : 'http://localhost:5000/assets/winner_bg.png';
+        };
+
+        function copyCSS() {
+            let css = "";
+            fields.forEach(f => {
+                css += `.${f.classList[1]} { top: ${f.style.top || getComputedStyle(f).top}; left: ${f.style.left || getComputedStyle(f).left}; }\n`;
+            });
+            console.info("UPDATED POSITIONS:\n", css);
+            alert("CSS logged to console! (F12)");
+        }
+    </script>
+</body>
+</html>
