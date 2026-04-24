@@ -80,6 +80,17 @@ app.use(errorHandler);
 // --- Server Start ---
 const PORT = process.env.PORT || 5000;
 
+(async () => {
+  try {
+    const [rows] = await db.execute("SELECT 1");
+    console.log("✅ DB Connected Successfully");
+  } catch (err) {
+    console.error("❌ DB Connection Failed:", err.message);
+  }
+})();
+
+
+
 app.listen(PORT, () => {
   console.log(`[CampusRank] Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 
