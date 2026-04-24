@@ -12,5 +12,13 @@ const pool = mysql.createPool({
   queueLimit: 0          // No limit on pending requests in the queue
 });
 
-// Export the promise wrapper so we can use async/await syntax when querying DB
-module.exports = pool.promise();
+
+async function initTables() {
+
+  console.log("Creating tables...");
+}
+
+module.exports = {
+  pool: pool.promise(),
+  initTables
+};
