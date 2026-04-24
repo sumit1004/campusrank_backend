@@ -106,3 +106,13 @@ app.listen(PORT, () => {
 app.get('/', (req, res) => {
   res.send('CampusRank API is running 🚀');
 });
+
+// server.js
+
+const { initTables } = require('./config/db');
+
+initTables();
+
+app.listen(PORT, () => {
+  console.log("Server running");
+});
