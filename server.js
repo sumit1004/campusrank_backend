@@ -19,12 +19,11 @@ app.use(helmet({
 }));
 
 // --- CORS ---
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',');
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: [
+    "http://localhost:5173",
+    "https://campus-rank.netlify.app"
+  ],
   credentials: true
 }));
 
