@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT,
   waitForConnections: true,
   connectionLimit: 10,
-  connectTimeout: 10000,
+  connectTimeout: 20000,
 });
 
 async function initTables() {

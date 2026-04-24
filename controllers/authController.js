@@ -70,7 +70,7 @@ const login = async (req, res, next) => {
 
     // 2. Check user exists
     const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    
+
     if (users.length === 0) {
       res.status(401); // Unauthorized
       throw new Error('Invalid email or password.');
@@ -130,7 +130,7 @@ const updateProfile = async (req, res, next) => {
     const { name, email, password, course, branch, semester, college } = req.body;
 
     if (!name || !email) { res.status(400); throw new Error('Name and email are required'); }
-    
+
     let query = 'UPDATE users SET name = ?, email = ?, course = ?, branch = ?, semester = ?, college = ? WHERE id = ?';
     let params = [name, email, course, branch, semester, college, userId];
 
@@ -142,7 +142,7 @@ const updateProfile = async (req, res, next) => {
 
     await db.query(query, params);
     res.json({ success: true, message: 'Profile updated successfully' });
-  } catch(err) { next(err); }
+  } catch (err) { next(err); }
 };
 
 const { getBadge, getNextBadge } = require('../utils/badgeHelper');
@@ -185,3 +185,11 @@ module.exports = {
   updateProfile,
   getProfile
 };
+
+
+try {
+  // signup logic
+} catch (err) {
+  console.error("SIGNUP ERROR:", err);
+  res.status(500).json({ message: err.message });
+}

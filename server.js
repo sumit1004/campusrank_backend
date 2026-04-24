@@ -11,7 +11,7 @@ const { errorHandler } = require('./middlewares/errorMiddleware');
 const { protect } = require('./middlewares/authMiddleware');
 
 const app = express();
-
+app.set('trust proxy', 1);
 // --- Security Headers ---
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
