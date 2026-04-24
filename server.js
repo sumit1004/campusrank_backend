@@ -8,13 +8,13 @@ const path = require('path');
 
 const db = require('./config/db');
 const { errorHandler } = require('./middlewares/errorMiddleware');
-const { protect, authorize } = require('./middlewares/authMiddleware');
+const { protect } = require('./middlewares/authMiddleware');
 
 const app = express();
 
 // --- Security Headers ---
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' } // Allow serving uploads cross-origin
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 // --- CORS ---
@@ -31,34 +31,25 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// --- Static File Serving ---
+// --- Static Files ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// --- Global Rate Limiting (all API routes) ---
+// --- Rate Limiting ---
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Increased for rich dashboard/multi-tab use
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests, please try again later.' }
+  windowMs: 15 * 60 * 1000,
+  max: 1000
 });
 app.use('/api', globalLimiter);
 
-// --- Strict Rate Limiting for Auth Routes ---
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Increased for smoother dev/testing
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many login attempts, please try again after 15 minutes.' }
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
 
-// --- Strict Rate Limiting for File Upload Routes ---
 const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 30,
-  message: { success: false, message: 'Upload limit exceeded, please try again later.' }
+  windowMs: 60 * 60 * 1000,
+  max: 30
 });
 
 // --- Routes ---
@@ -73,15 +64,20 @@ app.use('/api/forms', require('./routes/formRoutes'));
 app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
-// Backward-compatible profile routes (also handled in userRoutes)
+// Profile routes
 const { getUserProfile, updateProfile } = require('./controllers/userController');
 app.get('/api/profile', protect, getUserProfile);
 app.put('/api/profile', protect, updateProfile);
 
-// --- Error Handling Middleware (must be last) ---
+// --- Root Route ---
+app.get('/', (req, res) => {
+  res.send('CampusRank API is running 🚀');
+});
+
+// --- Error Handler ---
 app.use(errorHandler);
 
-// --- Server Startup ---
+// --- Server Start ---
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
@@ -97,22 +93,6 @@ app.listen(PORT, () => {
     }
   };
 
-  // Run every hour
   setInterval(runJob, 60 * 60 * 1000);
-
-  // Run once at startup
   runJob();
-});
-app.get('/', (req, res) => {
-  res.send('CampusRank API is running 🚀');
-});
-
-// server.js
-
-const { initTables } = require('./config/db');
-
-initTables();
-
-app.listen(PORT, () => {
-  console.log("Server running");
 });
