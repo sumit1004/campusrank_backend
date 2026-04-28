@@ -359,10 +359,51 @@ const getMyParticipations = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Verify a certificate via its custom ID (Public)
+ * @route   GET /api/certificates/verify/:certId
+ * @access  Public
+ */
+const verifyCertificate = async (req, res, next) => {
+  try {
+    const { certId } = req.params;
+
+    // Search for the certificate in the e_certificates table
+    // Note: Since we don't store certId in the DB currently (it's generated on the fly in PDF),
+    // we need to either store it or parse it.
+    // IMPROVEMENT: Let's update bulkGenerate to store the custom certId.
+    
+    // For now, let's look it up by the filename pattern or ID if we add it to the DB.
+    // Actually, I should probably add a `cert_id` column to `e_certificates`.
+    
+    const [certs] = await db.query(
+      `SELECT ec.*, u.name as student_name, cl.name as club_name 
+       FROM e_certificates ec
+       JOIN users u ON ec.user_id = u.id
+       JOIN clubs cl ON ec.club_id = cl.id
+       WHERE ec.certificate_url LIKE ?`,
+      [`%${certId}%`]
+    );
+
+    if (certs.length === 0) {
+      return res.status(404).json({ success: false, message: 'Certificate not found or invalid' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: certs[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadCertificate,
   getStudentCertificates,
   bulkGenerateCertificates,
   getMyECertificates,
-  getMyParticipations
+  getMyParticipations,
+  verifyCertificate
 };
+

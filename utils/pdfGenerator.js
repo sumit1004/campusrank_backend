@@ -29,11 +29,17 @@ const generateCertificatePDF = async (data) => {
   // Use provided ID or generate a fallback
   const certId    = providedCertId || `CR-${erp}-${Date.now().toString(36).toUpperCase()}`;
   
-  // VERIFICATION URL (Replace with your actual production domain)
-  const verifyUrl = `http://localhost:5173/verify-certificate/${certId}`;
+  // VERIFICATION URL (Uses environment variable for production, falls back to localhost)
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const verifyUrl = `${frontendUrl}/verify/${certId}`;
+
   
   // Create QR Code (using a stable API)
-  const qrUrl     = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&margin=0`;
+  // If you have a premium API key for GoQR or similar, you can append it here
+  const qrApiKey  = process.env.QR_API_KEY ? `&apikey=${process.env.QR_API_KEY}` : '';
+  const qrUrl     = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&margin=0${qrApiKey}`;
+
+
 
   // 4. Format Date
   const formattedDate = event_date

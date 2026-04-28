@@ -8,7 +8,10 @@ async function testAlignment() {
   const bgDataUrl = `data:image/png;base64,${bgBuffer.toString('base64')}`;
 
   const certId = "CR-210101-ABCDEF";
-  const verifyUrl = `http://localhost:5173/verify-certificate/${certId}`;
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const verifyUrl = `${frontendUrl}/verify/${certId}`;
+
+
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&margin=0`;
 
   const html = `

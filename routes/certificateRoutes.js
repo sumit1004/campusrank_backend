@@ -5,8 +5,10 @@ const {
   getStudentCertificates,
   bulkGenerateCertificates,
   getMyECertificates,
-  getMyParticipations
+  getMyParticipations,
+  verifyCertificate
 } = require('../controllers/certificateController');
+
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const { upload, avatarUpload } = require('../middlewares/uploadMiddleware');
 const multer = require('multer');
@@ -31,4 +33,8 @@ router.get('/my-e-certificates', protect, getMyECertificates);
 // GET /api/certificates/my-participations (Student)
 router.get('/my-participations', protect, getMyParticipations);
 
+// GET /api/certificates/verify/:certId (Public)
+router.get('/verify/:certId', verifyCertificate);
+
 module.exports = router;
+
