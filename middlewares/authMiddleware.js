@@ -9,10 +9,17 @@ const protect = (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      
+      if (!token || token === 'null' || token === 'undefined') {
+        res.status(401);
+        return next(new Error('Not authorized, token is null or undefined'));
+      }
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
-      return next(); // Correctly return next to avoid falling through
+      return next();
     } catch (error) {
+      console.error(`[Auth] Token verification failed: ${error.message}`);
       res.status(401);
       return next(new Error('Not authorized, token invalid or expired'));
     }

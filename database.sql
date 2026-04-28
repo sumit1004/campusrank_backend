@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS event_participation (
   position ENUM('winner','runnerup1','runnerup2','participant'),
   source ENUM('manual','e_certificate'),
   points INT,
+  submission_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_event (user_id, club_id, event_name, event_date),
   CONSTRAINT fk_ep_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -149,13 +150,16 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 -- Leaderboard Cache
 CREATE TABLE IF NOT EXISTS leaderboard_cache (
-  user_id INT,
-  club_id INT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  club_id INT NULL,
   total_points INT,
-  month INT,
-  year INT,
+  month INT NOT NULL,
+  year INT NOT NULL,
+  first_achievement_date DATE,
+  min_submission_at TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, club_id, month, year),
+  UNIQUE KEY uk_user_club_time (user_id, club_id, month, year),
   CONSTRAINT fk_lc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_lc_club FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
 );

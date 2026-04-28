@@ -7,13 +7,16 @@ const initLeaderboardCache = async () => {
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS leaderboard_cache (
-        user_id INT,
-        club_id INT,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        club_id INT NULL,
         total_points INT,
-        month INT,
-        year INT,
+        month INT NOT NULL,
+        year INT NOT NULL,
+        first_achievement_date DATE,
+        min_submission_at TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, club_id, month, year),
+        UNIQUE KEY uk_user_club_time (user_id, club_id, month, year),
         CONSTRAINT fk_lc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_lc_club FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
       )
@@ -42,19 +45,24 @@ initLeaderboardCache();
 const refreshLeaderboardCache = async () => {
   try {
     await db.query(`
-      INSERT INTO leaderboard_cache (user_id, club_id, month, year, total_points)
+      INSERT INTO leaderboard_cache (user_id, club_id, month, year, total_points, first_achievement_date, min_submission_at)
       SELECT
         ep.user_id,
-        ep.club_id,
+        cl.id AS club_id, -- NULL if invalid or 0
         MONTH(ep.event_date)  AS month,
         YEAR(ep.event_date)   AS year,
-        SUM(ep.points)        AS total_points
+        SUM(ep.points)        AS total_points,
+        MIN(ep.event_date)    AS first_achievement_date,
+        MIN(ep.submission_created_at) AS min_submission_at
       FROM event_participation ep
       JOIN users u ON u.id = ep.user_id
+      LEFT JOIN clubs cl ON cl.id = ep.club_id AND ep.club_id != 0
       WHERE u.role = 'student'
-      GROUP BY ep.user_id, ep.club_id, MONTH(ep.event_date), YEAR(ep.event_date)
+      GROUP BY ep.user_id, cl.id, MONTH(ep.event_date), YEAR(ep.event_date)
       ON DUPLICATE KEY UPDATE
         total_points = VALUES(total_points),
+        first_achievement_date = VALUES(first_achievement_date),
+        min_submission_at = VALUES(min_submission_at),
         updated_at   = CURRENT_TIMESTAMP
     `);
   } catch (err) {
@@ -95,22 +103,38 @@ const getFromCache = async (type, club_id, filter, offset, limit) => {
   const { whereStr, params } = buildCacheWhere(type, club_id, filter);
 
   const cacheQuery = `
-    SELECT
-      u.id, u.name, u.erp, u.avatar_url,
-      SUM(lc.total_points) AS total_points
-    FROM leaderboard_cache lc
-    JOIN users u ON u.id = lc.user_id
-    ${whereStr}
-    GROUP BY u.id, u.name, u.erp, u.avatar_url
-    ORDER BY total_points DESC, u.id ASC
+    WITH RankedUsers AS (
+      SELECT
+        u.id, u.name, u.erp, u.avatar_url,
+        SUM(lc.total_points) AS total_points,
+        ROW_NUMBER() OVER (
+          ORDER BY 
+            SUM(lc.total_points) DESC, 
+            MIN(lc.first_achievement_date) ASC, 
+            MIN(lc.min_submission_at) ASC, 
+            u.id ASC
+        ) AS \`rank\`
+      FROM leaderboard_cache lc
+      JOIN users u ON u.id = lc.user_id
+      ${whereStr}
+      GROUP BY u.id, u.name, u.erp, u.avatar_url
+      HAVING total_points > 0
+    )
+    SELECT * FROM RankedUsers
+    ORDER BY \`rank\` ASC
     LIMIT ? OFFSET ?
   `;
 
   const countQuery = `
-    SELECT COUNT(DISTINCT lc.user_id) AS total
-    FROM leaderboard_cache lc
-    JOIN users u ON u.id = lc.user_id
-    ${whereStr}
+    SELECT COUNT(*) AS total
+    FROM (
+      SELECT SUM(lc.total_points) AS tp
+      FROM leaderboard_cache lc
+      JOIN users u ON u.id = lc.user_id
+      ${whereStr}
+      GROUP BY lc.user_id
+      HAVING tp > 0
+    ) as user_points
   `;
 
   try {
@@ -121,8 +145,7 @@ const getFromCache = async (type, club_id, filter, offset, limit) => {
     if (countResult[0].total === 0) return null;
 
     return {
-      data: rows.map((row, index) => ({
-        rank: offset + index + 1,
+      data: rows.map((row) => ({
         ...row,
         total_points: parseInt(row.total_points) || 0,
       })),
@@ -163,18 +186,36 @@ const getFromLive = async (type, club_id, filter, offset, limit) => {
   const whereStr = whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : '';
 
   const query = `
-    SELECT u.id, u.name, u.erp, u.avatar_url, SUM(ep.points) as total_points
-    ${baseQuery}
-    ${whereStr}
-    GROUP BY u.id, u.name, u.erp, u.avatar_url
-    ORDER BY total_points DESC, u.id ASC
+    WITH RankedUsers AS (
+      SELECT 
+        u.id, u.name, u.erp, u.avatar_url, 
+        SUM(ep.points) as total_points,
+        ROW_NUMBER() OVER (
+          ORDER BY 
+            SUM(ep.points) DESC, 
+            MIN(ep.event_date) ASC, 
+            MIN(ep.submission_created_at) ASC, 
+            u.id ASC
+        ) AS \`rank\`
+      ${baseQuery}
+      ${whereStr}
+      GROUP BY u.id, u.name, u.erp, u.avatar_url
+      HAVING total_points > 0
+    )
+    SELECT * FROM RankedUsers
+    ORDER BY \`rank\` ASC
     LIMIT ? OFFSET ?
   `;
 
   const countQuery = `
-    SELECT COUNT(DISTINCT ep.user_id) as total
-    ${baseQuery}
-    ${whereStr}
+    SELECT COUNT(*) AS total
+    FROM (
+      SELECT SUM(ep.points) as tp
+      ${baseQuery}
+      ${whereStr}
+      GROUP BY ep.user_id
+      HAVING tp > 0
+    ) as user_points
   `;
 
   const [rows] = await db.query(query, [...params, parseInt(limit), parseInt(offset)]);
@@ -184,8 +225,7 @@ const getFromLive = async (type, club_id, filter, offset, limit) => {
   refreshLeaderboardCache();
 
   return {
-    data: rows.map((row, index) => ({
-      rank: offset + index + 1,
+    data: rows.map((row) => ({
       ...row,
       total_points: parseInt(row.total_points) || 0,
     })),

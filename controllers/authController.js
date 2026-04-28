@@ -179,17 +179,10 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+
 module.exports = {
   signup,
   login,
   updateProfile,
   getProfile
 };
-
-
-try {
-  // signup logic
-} catch (err) {
-  console.error("SIGNUP ERROR:", err);
-  res.status(500).json({ message: err.message });
-}

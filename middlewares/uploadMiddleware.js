@@ -18,12 +18,12 @@ const getSecureFilename = (req, file) => {
 };
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads/')),
   filename: (req, file, cb) => cb(null, getSecureFilename(req, file))
 });
 
 const avatarStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/avatars/'),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads/avatars/')),
   filename: (req, file, cb) => {
     const random = crypto.randomBytes(4).toString('hex');
     const ext = path.extname(file.originalname).toLowerCase();

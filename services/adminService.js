@@ -1,7 +1,6 @@
 const db = require('../config/db');
 const { logActivity } = require('../utils/activityLogger');
 const { createNotification } = require('../utils/notificationHelper');
-const { refreshRankCache } = require('../utils/rankCache');
 const { refreshLeaderboardCache } = require('./leaderboardService');
 
 // Centralized points map — single source of truth for this service
@@ -59,10 +58,10 @@ const approveCertificate = async (certId, adminId) => {
 
     // 2. Add to event_participation (Source of truth)
     await connection.query(
-      `INSERT INTO event_participation (user_id, club_id, event_name, event_date, position, source, points)
-       VALUES (?, ?, ?, ?, ?, "manual", ?)
+      `INSERT INTO event_participation (user_id, club_id, event_name, event_date, position, source, points, submission_created_at)
+       VALUES (?, ?, ?, ?, ?, "manual", ?, ?)
        ON DUPLICATE KEY UPDATE points = ?`,
-      [cert.user_id, cert.club_id, cert.event_name, cert.event_date, cert.position, points, points]
+      [cert.user_id, cert.club_id, cert.event_name, cert.event_date, cert.position, points, cert.created_at, points]
     );
 
     // 3. Update user's total points
@@ -74,7 +73,6 @@ const approveCertificate = async (certId, adminId) => {
     await connection.commit();
 
     // Refresh both caches after points change (non-blocking)
-    refreshRankCache();
     refreshLeaderboardCache();
 
     createNotification(cert.user_id, `Your certificate for ${cert.event_name} has been approved! +${points} points.`, 'success');

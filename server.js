@@ -32,8 +32,13 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // --- Static ---
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+const UPLOADS_PATH = path.join(__dirname, 'uploads');
+const ASSETS_PATH = path.join(__dirname, 'assets');
+
+app.use('/uploads', express.static(UPLOADS_PATH));
+app.use('/assets', express.static(ASSETS_PATH));
+
+console.log(`📂 Serving uploads from: ${UPLOADS_PATH}`);
 
 // --- Rate Limit ---
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
